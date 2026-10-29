@@ -3,7 +3,7 @@ using Guardian.Api.Data;
 using Guardian.Api.Middleware;
 using Guardian.Api.Services;
 using Microsoft.EntityFrameworkCore;
-using Serilog;
+using Serilog; //фрейм для локирования аналог Loki на golang
 
 var builder = WebApplication.CreateBuilder(args);
 
