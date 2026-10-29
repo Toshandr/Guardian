@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: guardian-api
+  namespace: guardian
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: guardian-api
+  template:
+    metadata:
+      labels:
+        app: guardian-api
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:16
+          command:
+            - sh
+            - -c
+            - until pg_isready -h postgres -p 5432 -U guardian -d guardian; do echo 'Waiting for PostgreSQL'; sleep 2; done
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: guardian-secrets
+                  key: postgres-password
+      containers:
+        - name: api
+          image: guardian-api:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Development
+            - name: ASPNETCORE_URLS
+              value: http://+:8080
+            - name: ConnectionStrings__Postgres
+              valueFrom:
+                secretKeyRef:
+                  name: guardian-secrets
+                  key: postgres-connection
+            - name: ConnectionStrings__Redis
+              value: redis:6379
+          readinessProbe:
+            httpGet:
+              path: /swagger/index.html
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /swagger/index.html
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: guardian-api
+  namespace: guardian
+spec:
+  type: ClusterIP
+  selector:
+    app: guardian-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

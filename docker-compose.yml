@@ -1,0 +1,51 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: guardian-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: guardian
+      POSTGRES_USER: guardian
+      POSTGRES_PASSWORD: guardian_local_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - guardian_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U guardian -d guardian"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: guardian-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - guardian_redis_data:/data
+
+  api:
+    build:
+      context: .
+      dockerfile: src/Guardian.Api/Dockerfile
+    container_name: guardian-api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=guardian;Username=guardian;Password=guardian_local_password
+      ConnectionStrings__Redis: redis:6379
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+volumes:
+  guardian_postgres_data:
+  guardian_redis_data:
