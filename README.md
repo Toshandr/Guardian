@@ -1,4 +1,4 @@
-# Guardian - Акт II. Хранитель
+# Guardian API
 
 ASP.NET Core Web API, PostgreSQL, EF Core, Redis, Serilog, Docker и xUnit.
 
